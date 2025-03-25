@@ -4,7 +4,7 @@ import random
 #database connection information
 DB_NAME = "postgres"
 DB_USER = "postgres"
-DB_PASSWORD = "fireball23" 
+DB_PASSWORD = "password" 
 DB_HOST = "localhost"
 DB_PORT = "5432"
 
