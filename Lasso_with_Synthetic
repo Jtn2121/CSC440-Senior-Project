@@ -3,6 +3,7 @@ import numpy as np
 from pandasql import sqldf
 from sklearn import linear_model
 import psycopg2
+import random
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -12,11 +13,11 @@ from sklearn.model_selection import GridSearchCV
 
 db_name = "postgres"
 db_user = "postgres"
-db_password = "your_password"
+db_password = "fireball23"
 db_host = "localhost"
 db_port = "5432"
 
-rows = []
+rows = [] #ADD INPUTS FOR POSTGRES
 pysqldf = lambda q: sqldf(q, globals())
 
 with psycopg2.connect(
@@ -62,17 +63,62 @@ lasso_cv.fit(X_train, y_train)
 
 lassoGood = lasso_cv.best_estimator_
 lassoGood.fit(X_train, y_train)
+
 #inputs to build the x_new array
 taskid = int(input("Enter task ID: (1-7) "))
 assignee_id = int(input("Enter assignee ID: (1-5) "))
-v1 = int(input("Enter variable 1: (1-30) "))
+v1 = int(input("Enter variable 1: (1-30) ")) 
 v2 = int(input("Enter variable 2: (1-5) "))
 v3 = int(input("Enter variable 3: (-10 to 10) "))
 
 X_new = np.array([[taskid, assignee_id, v1, v2, v3]]) # assignee_id input to get model prediction
 y_pred = lassoGood.predict(X_new) #X_test or X_new for single ouput
-print("The prediction with the given inputs is: ", y_pred)
+print("The prediction of this task's duration with the given inputs is: ", y_pred)
 # to use these three below, use X_test for the y_pred
 # print('mean', mean_absolute_error(y_test, y_pred))
 # print('mean squared', mean_squared_error(y_test, y_pred))
 # print('r2', r2_score(y_test, y_pred))
+
+yInt = y_pred[0]
+yInt = float(yInt)
+time_total = random.uniform(yInt - 10, yInt + 10)
+time_total = max (1, time_total)
+print("The total time this task actually took is: ", time_total)
+
+
+#Start of entry inserts:
+#conditionals used to keep ref integrity
+taskName = "Nada"
+if taskid == 1:
+      taskName = "Check Server Logs"
+elif taskid == 2:
+      taskName = "System Update"
+elif taskid == 3:
+      taskName = "Code Review"
+elif taskid == 4:
+      taskName = "User Testing"
+elif taskid == 5:
+      taskName = "Debugging"
+elif taskid == 6:
+      taskName = "Coding"
+elif taskid == 7:
+      taskName = "Software maintenance"
+
+
+insertVals = [taskid, taskName, yInt, time_total, assignee_id, v1, v2, v3] # array used to input values as a new row
+with psycopg2.connect(
+        database=db_name,
+        user=db_user,
+        password=db_password,
+        host=db_host,
+        port=db_port 
+    ) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("INSERT INTO Tasks2 \
+                            (task_id, taskname, estimated_time, total_time, assignee_id, var1, var2, var3)\
+                            VALUES (%s,%s, %s, %s, %s, %s, %s, %s)", insertVals)
+            connection.commit()
+    
+print("New row inserted!")
+    
+           
