@@ -4,7 +4,7 @@ import random
 #database connection information
 DB_NAME = "postgres"
 DB_USER = "postgres"
-DB_PASSWORD = "password" 
+DB_PASSWORD = "fireball23" 
 DB_HOST = "localhost"
 DB_PORT = "5432"
 
@@ -17,12 +17,11 @@ task_names = [
      ["User Testing", 4],
      ["Debugging",5],
      ["Coding", 6],
-     ["Software maintence",7]
+     ["Software maintenance",7]
 ]
 
 bruh = random.choice(task_names)
-print(bruh[0])
-print(bruh[1])
+
 #function to create synthetic data
 def generate_synthetic_tasks (n = 100):
     tasks = []
@@ -30,12 +29,12 @@ def generate_synthetic_tasks (n = 100):
         task = random.choice(task_names)
         task_name = task[0]
         task_id = task[1]
-        estimated_time = random.randint(1,50)
+        estimated_time = random.uniform(1,50)
         assignee_id = random.randint(1,5) #five different employees
         var1 = random.randint(1,30)
         var2 = random.randint(1,5)
         var3 = random.randint(-10,10)
-        time_total = random.randint(estimated_time - 10, estimated_time + 10) #sets time total +- 10 of estimated time 
+        time_total = random.uniform(estimated_time - 10, estimated_time + 10) #sets time total +- 10 of estimated time 
         time_total = max (1, time_total) #makes sure its at least 1
         tasks.append((task_id, task_name, estimated_time, time_total, assignee_id, var1, var2, var3))
     return tasks
@@ -58,8 +57,8 @@ try:
                 TaskId SERIAL PRIMARY KEY,
                 task_id INTEGER NOT NULL,
                 taskname TEXT NOT NULL,
-                estimated_time INTEGER NOT NULL,
-                total_time INTEGER NOT NULL,
+                estimated_time DOUBLE PRECISION NOT NULL,
+                total_time DOUBLE PRECISION NOT NULL,
                 assignee_id INTEGER NOT NULL,
                 var1 INTEGER NOT NULL,
                 var2 INTEGER NOT NULL,
