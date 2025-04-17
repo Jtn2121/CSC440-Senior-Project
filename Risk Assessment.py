@@ -1,6 +1,10 @@
 import tkinter as tk
 from tkinter import messagebox
-from datetime import datetime
+from datetime import datetime, timedelta
+
+WORK_START_HOUR = 9
+WORK_END_HOUR = 17
+WORK_HOURS_PER_DAY = WORK_END_HOUR - WORK_START_HOUR
 
 def validate_date(date_str):
     try:
@@ -8,8 +12,41 @@ def validate_date(date_str):
     except ValueError:
         return None
 
+def is_weekend(date_obj):
+    return date_obj.weekday() >= 5  # 5 = Saturday, 6 = Sunday
+
+def next_work_day(date_obj):
+    next_day = date_obj + timedelta(days=1)
+    while is_weekend(next_day):
+        next_day += timedelta(days=1)
+    return next_day
+
+def calculate_estimated_completion(start_dt, total_hours):
+    current = start_dt
+    hours_left = total_hours
+
+    while hours_left > 0:
+        if is_weekend(current):
+            current = datetime.combine(next_work_day(current.date()), datetime.min.time()).replace(hour=WORK_START_HOUR)
+            continue
+
+        end_of_day = current.replace(hour=WORK_END_HOUR, minute=0, second=0, microsecond=0)
+        start_of_day = current.replace(hour=WORK_START_HOUR, minute=0, second=0, microsecond=0)
+
+        if current < start_of_day:
+            current = start_of_day
+
+        hours_available_today = min((end_of_day - current).total_seconds() / 3600, WORK_HOURS_PER_DAY)
+        if hours_left <= hours_available_today:
+            return current + timedelta(hours=hours_left)
+        else:
+            hours_left -= hours_available_today
+            current = datetime.combine(next_work_day(current.date()), datetime.min.time()).replace(hour=WORK_START_HOUR)
+
+    return current
+
 def handle_input():
-    current_date = datetime.today()
+    current_date = datetime.now()
 
     start_date_str = start_date_entry.get()
     end_date_str = end_date_entry.get()
@@ -30,140 +67,143 @@ def handle_input():
         messagebox.showerror("Input Error", "End Date must be after Start Date.")
         return
 
-    # Validate integer inputs
+    # Validate number inputs
     try:
-        length_of_task = int(length_of_task_str)
+        length_of_task = float(length_of_task_str)
     except ValueError:
-        messagebox.showerror("Input Error", "Length of Task must be an integer.")
+        messagebox.showerror("Input Error", "Length of Task must be a number.")
         return
 
     try:
-        calculated_length = int(calculated_length_str)
+        calculated_length = float(calculated_length_str)
     except ValueError:
-        messagebox.showerror("Input Error", "Calculated Length of Task must be an integer.")
+        messagebox.showerror("Input Error", "Calculated Length of Task must be a number.")
         return
 
-    # Weighted average: 25% original, 75% calculated
-    average_task_length = int(0.25 * length_of_task + 0.75 * calculated_length)
+    # Weighted average
+    average_task_length = 0.25 * length_of_task + 0.75 * calculated_length
 
-    current_date_only = current_date.date()
-    start_date_only = start_date.date()
-    end_date_only = end_date.date()
+    # Adjust current time to 9AM if it's before workday, or 9AM next workday if after 5PM
+    use_date = current_date
+    if start_date.date() > current_date.date():
+        use_date = start_date
+    elif current_date.hour >= WORK_END_HOUR:
+        use_date = datetime.combine(next_work_day(current_date.date()), datetime.min.time()).replace(hour=WORK_START_HOUR)
+    elif current_date.hour < WORK_START_HOUR:
+        use_date = current_date.replace(hour=WORK_START_HOUR, minute=0, second=0, microsecond=0)
 
-    output_text = ""
-    risk_text = ""
-    output_color = "black"
+    # Calculate hours available between current/start date and end date (excluding weekends)
+    temp = use_date
+    total_hours_remaining = 0
+    while temp.date() <= end_date.date():
+        if not is_weekend(temp):
+            if temp.date() == use_date.date():
+                # Partial day today
+                end_of_day = temp.replace(hour=WORK_END_HOUR, minute=0)
+                hours_today = max(0, (end_of_day - temp).total_seconds() / 3600)
+            else:
+                hours_today = WORK_HOURS_PER_DAY
+            total_hours_remaining += hours_today
+        temp += timedelta(days=1)
+        temp = temp.replace(hour=WORK_START_HOUR, minute=0)
 
-    if current_date_only < start_date_only:
-        delta = (end_date_only - current_date_only).days
-        hours_remaining = delta * 8
-        buffer_hours = hours_remaining - average_task_length
-        buffer_ratio = buffer_hours / average_task_length
+    buffer_hours = total_hours_remaining - average_task_length
+    buffer_ratio = buffer_hours / average_task_length if average_task_length > 0 else 0
 
-        if buffer_ratio >= 0.25:
-            risk_text = "Low Risk"
-            output_color = "gold"
-        elif 0.05 <= buffer_ratio < 0.25:
-            risk_text = "Medium Risk"
-            output_color = "orange"
-        else:
-            risk_text = "High Risk"
-            output_color = "red"
-
-        output_text = f"Hours Remaining: {hours_remaining}"
-
-    elif start_date_only <= current_date_only < end_date_only:
-        delta = (end_date_only - current_date_only).days
-        hours_remaining = delta * 8 + 8
-        buffer_hours = hours_remaining - average_task_length
-        buffer_ratio = buffer_hours / average_task_length
-
-        if buffer_ratio >= 0.25:
-            risk_text = "Low Risk"
-            output_color = "gold"
-        elif 0.05 <= buffer_ratio < 0.25:
-            risk_text = "Medium Risk"
-            output_color = "orange"
-        else:
-            risk_text = "High Risk"
-            output_color = "red"
-
-        output_text = f"Hours Remaining: {hours_remaining}"
-
-    elif current_date_only == end_date_only:
-        output_text = "Due Today! (8 Hours!)"
-        risk_text = "Due Today!"
-        output_color = "blue"
-
-    elif current_date_only > end_date_only:
-        delta = (end_date_only - current_date_only).days
-        hours_past_due = abs(delta * 8) + 8
-        overrun_hours = calculated_length - average_task_length
-        overrun_ratio = overrun_hours / average_task_length
-
-        if overrun_ratio <= 0:
-            severity = "No Overrun"
-            output_color = "green"
-        elif overrun_ratio <= 0.1:
-            severity = "Minor Overrun"
-            output_color = "gold"
-        elif overrun_ratio <= 0.25:
-            severity = "Moderate Overrun"
-            output_color = "orange"
-        else:
-            severity = "Severe Overrun"
-            output_color = "red"
-
-        output_text = f"Hours Past Due: {hours_past_due}"
-        risk_text = severity
-
+    # Determine risk
+    if buffer_ratio >= 0.25:
+        risk_text = "Low Risk"
+        risk_color = "gold"
+    elif 0.05 <= buffer_ratio < 0.25:
+        risk_text = "Medium Risk"
+        risk_color = "orange"
     else:
-        output_text = "Date comparison failed for some reason."
-        risk_text = "Error"
-        output_color = "gray"
+        risk_text = "High Risk"
+        risk_color = "red"
 
-    # Update output label with black background and color only the risk part
-    output_label.config(text=output_text, fg="white", bg="black")
-    risk_label.config(text=risk_text, fg=output_color, bg="black")
+    # Determine overdue severity
+    if buffer_ratio < 0:
+        overrun_text = "Severe Overrun"
+        overrun_color = "red"
+    elif -0.1 <= buffer_ratio < 0:
+        overrun_text = "Moderate Overrun"
+        overrun_color = "orange"
+    elif -0.25 <= buffer_ratio < -0.1:
+        overrun_text = "Minor Overrun"
+        overrun_color = "yellow"
+    else:
+        overrun_text = "No Overrun"
+        overrun_color = "green"
 
+    # Estimated completion time
+    estimated_completion = calculate_estimated_completion(use_date, average_task_length)
+
+    # Time left after completion (only on end date)
+    remaining_hours_after_completion = 0
+    temp = estimated_completion
+    while temp.date() <= end_date.date():
+        if not is_weekend(temp):
+            if temp.date() == estimated_completion.date():
+                end_of_day = temp.replace(hour=WORK_END_HOUR, minute=0)
+                remaining = max(0, (end_of_day - temp).total_seconds() / 3600)
+            else:
+                remaining = WORK_HOURS_PER_DAY
+            remaining_hours_after_completion += remaining
+        temp += timedelta(days=1)
+        temp = temp.replace(hour=WORK_START_HOUR, minute=0)
+
+    # Update UI
+    output_label.config(
+        text=f"Task Length: {round(average_task_length, 2)} hrs",
+        fg="white", bg="black"
+    )
+    estimate_label.config(
+        text=f"Estimated Completion: {estimated_completion.strftime('%m-%d-%Y %I:%M %p')}\nTime Left After Completion: {int(remaining_hours_after_completion)} hrs",
+        fg="white", bg="black"
+    )
+    risk_label.config(
+        text=f"{risk_text} - {overrun_text}", fg=risk_color, bg="black"
+    )
 
 # GUI setup
 root = tk.Tk()
 root.title("Risk Assessment")
 
-# Create a frame for the 2x2 grid of inputs
+# Input frame
 input_frame = tk.Frame(root)
 input_frame.pack(padx=10, pady=10)
 
-# Start Date
-tk.Label(input_frame, text="Start Date (MM-DD-YYYY):").grid(row=0, column=0, sticky="e", padx=5, pady=5)
-start_date_entry = tk.Entry(input_frame)
-start_date_entry.grid(row=0, column=1, padx=5, pady=5)
+# Labels and Entry fields
+labels = [
+    ("Start Date (MM-DD-YYYY):", 0, 0),
+    ("End Date (MM-DD-YYYY):", 0, 2),
+    ("Length of Task (Hours):", 1, 0),
+    ("Calculated Length (Hours):", 1, 2)
+]
+entries = {}
 
-# End Date
-tk.Label(input_frame, text="End Date (MM-DD-YYYY):").grid(row=0, column=2, sticky="e", padx=5, pady=5)
-end_date_entry = tk.Entry(input_frame)
-end_date_entry.grid(row=0, column=3, padx=5, pady=5)
+for text, row, col in labels:
+    tk.Label(input_frame, text=text).grid(row=row, column=col, sticky="e", padx=5, pady=5)
+    entry = tk.Entry(input_frame)
+    entry.grid(row=row, column=col + 1, padx=5, pady=5)
+    entries[text] = entry
 
-# Length of Task
-tk.Label(input_frame, text="Length of Task (Hours):").grid(row=1, column=0, sticky="e", padx=5, pady=5)
-length_of_task_entry = tk.Entry(input_frame)
-length_of_task_entry.grid(row=1, column=1, padx=5, pady=5)
+start_date_entry = entries["Start Date (MM-DD-YYYY):"]
+end_date_entry = entries["End Date (MM-DD-YYYY):"]
+length_of_task_entry = entries["Length of Task (Hours):"]
+calculated_length_entry = entries["Calculated Length (Hours):"]
 
-# Calculated Length of Task
-tk.Label(input_frame, text="Calculated Length (Hours):").grid(row=1, column=2, sticky="e", padx=5, pady=5)
-calculated_length_entry = tk.Entry(input_frame)
-calculated_length_entry.grid(row=1, column=3, padx=5, pady=5)
-
-# Submit Button
+# Submit button
 tk.Button(root, text="Submit", command=handle_input).pack(pady=10)
 
-# Output Label
-output_label = tk.Label(root, text="", fg="white", bg="black", width=40, height=2)
-output_label.pack(pady=10)
+# Output labels
+output_label = tk.Label(root, text="", fg="white", bg="black", width=60, height=2)
+output_label.pack(pady=5)
 
-# Risk Label (separate label for the risk part with its color)
-risk_label = tk.Label(root, text="", fg="black", bg="black", width=40, height=2)
+estimate_label = tk.Label(root, text="", fg="white", bg="black", width=60, height=3)
+estimate_label.pack(pady=5)
+
+risk_label = tk.Label(root, text="", fg="black", bg="black", width=60, height=2)
 risk_label.pack(pady=5)
 
 root.mainloop()
