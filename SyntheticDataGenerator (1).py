@@ -8,7 +8,7 @@ fake = Faker()
 #database connection information
 DB_NAME = "postgres"
 DB_USER = "postgres"
-DB_PASSWORD = "fireball123" 
+DB_PASSWORD = "Jtn962540" 
 DB_HOST = "localhost"
 DB_PORT = "5432"
 
@@ -28,18 +28,8 @@ bruh = random.choice(task_names)
 print(bruh[0])
 print(bruh[1])
 
-#function to create synthetic dates
-start_date = fake.date_between(start_date = '-3M', end_date = 'today')
 
-date_gap = random.randint(1, 9)
 
-end_date = start_date + timedelta(days = date_gap)
-
-format_start = start_date.strftime('%m/%d/%Y')
-format_end = end_date.strftime('%m/%d/%Y')
-
-print(format_start)
-print(format_end)
 
 #function to create synthetic data
 def generate_synthetic_tasks (n = 100):
@@ -55,7 +45,12 @@ def generate_synthetic_tasks (n = 100):
         var3 = random.randint(-10,10)
         time_total = random.randint(estimated_time - 10, estimated_time + 10) #sets time total +- 10 of estimated time 
         time_total = max (1, time_total) #makes sure its at least 1
-        tasks.append((task_id, task_name, estimated_time, time_total, assignee_id, var1, var2, var3))
+        start_date = fake.date_between(start_date = '-3M', end_date = 'today')
+        date_gap = random.randint(1, 9)
+        end_date = start_date + timedelta(days = date_gap)
+        tasks.append((task_id, task_name, estimated_time, time_total, assignee_id, var1, var2, var3, start_date, end_date))
+        
+        
     return tasks
 
 try:
