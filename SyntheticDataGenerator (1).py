@@ -82,7 +82,8 @@ try:
                 var1 INTEGER NOT NULL,
                 var2 INTEGER NOT NULL,
                 var3 INTEGER NOT NULL,
-                task_dates DATE NOT NULL
+                start_dates DATE NOT NULL,
+                end_dates DATE NOT NULL
                        
             )
         """)
