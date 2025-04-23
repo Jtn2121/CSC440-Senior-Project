@@ -1,6 +1,10 @@
 import psycopg2
 import random
 import uuid
+from faker import Faker
+from datetime import datetime, timedelta
+
+fake = Faker()
 
 #database connection information
 DB_NAME = "postgres"
@@ -181,7 +185,10 @@ def generate_synthetic_tasks (n = 100):
         estimated_time = random.uniform(mini,maxi)
         time_total = random.uniform(estimated_time - 10, estimated_time + 10) #sets time total +- 10 of estimated time 
         time_total = max (1, time_total) #makes sure its at least 1
-        tasks.append((str(task_id), task_name, time_total, estimated_time, str(assignee_id), template_name, str(template_id)))
+        start_date = fake.date_between(start_date = '-3M', end_date = 'today')
+        date_gap = random.randint(1, 9)
+        end_date = start_date + timedelta(days = date_gap)
+        tasks.append((str(task_id), task_name, time_total, estimated_time, str(assignee_id), template_name, str(template_id), start_date, end_date))
     return tasks
 
 try:
@@ -206,7 +213,9 @@ try:
                 total_time DOUBLE PRECISION NOT NULL,
                 assignee_id uuid NOT NULL,
                 templatename TEXT,
-                template_id uuid                                    
+                template_id uuid,
+                start_date DATE,
+                end_date DATE                                
             )
         """)
         #Removes rows from table so that you can update it if you have new values
@@ -253,7 +262,7 @@ try:
         #generate synthetic tasks
         synthetic_tasks = generate_synthetic_tasks(n = 25000)
         cursor.executemany(
-             "INSERT INTO TasksUUID (task_id, taskname, estimated_time, total_time, assignee_id, templatename, template_id) VALUES (%s,%s, %s, %s, %s, %s, %s)", synthetic_tasks
+             "INSERT INTO TasksUUID (task_id, taskname, estimated_time, total_time, assignee_id, templatename, template_id, start_date, end_date) VALUES (%s,%s, %s, %s, %s, %s, %s, %s ,%s)", synthetic_tasks
         )
         print(f"Inserted {len(synthetic_tasks)} synthetic tasks")
         conn.commit()
