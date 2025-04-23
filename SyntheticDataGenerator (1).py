@@ -8,7 +8,7 @@ fake = Faker()
 #database connection information
 DB_NAME = "postgres"
 DB_USER = "postgres"
-DB_PASSWORD = "Jtn962540" 
+DB_PASSWORD = "fireball123" 
 DB_HOST = "localhost"
 DB_PORT = "5432"
 
@@ -27,8 +27,6 @@ task_names = [
 bruh = random.choice(task_names)
 print(bruh[0])
 print(bruh[1])
-
-
 
 
 #function to create synthetic data
@@ -66,22 +64,24 @@ try:
         print ("Connected to database")
 
         #Create task table
+       # Drop and recreate table
+        cursor.execute("DROP TABLE IF EXISTS Tasks2")
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS Tasks2(
-                TaskId SERIAL PRIMARY KEY,
-                task_id INTEGER NOT NULL,
-                taskname TEXT NOT NULL,
-                estimated_time INTEGER NOT NULL,
-                total_time INTEGER NOT NULL,
-                assignee_id INTEGER NOT NULL,
-                var1 INTEGER NOT NULL,
-                var2 INTEGER NOT NULL,
-                var3 INTEGER NOT NULL,
-                start_dates DATE NOT NULL,
-                end_dates DATE NOT NULL
-                       
-            )
-        """)
+        CREATE TABLE Tasks2(
+            TaskId SERIAL PRIMARY KEY,
+            task_id INTEGER NOT NULL,
+            taskname TEXT NOT NULL,
+            estimated_time INTEGER NOT NULL,
+            total_time INTEGER NOT NULL,
+            assignee_id INTEGER NOT NULL,
+            var1 INTEGER NOT NULL,
+            var2 INTEGER NOT NULL,
+            var3 INTEGER NOT NULL,
+            start_date DATE NOT NULL,
+            end_date DATE NOT NULL
+    )
+""")
+
         #Removes rows from table so that you can update it if you have new values
         cursor.execute("TRUNCATE TABLE tasks2 RESTART IDENTITY")
         conn.commit()
@@ -90,8 +90,10 @@ try:
         #generate synthetic tasks
         synthetic_tasks = generate_synthetic_tasks(n = 2500)
         cursor.executemany(
-             "INSERT INTO Tasks2 (task_id, taskname, estimated_time, total_time, assignee_id, var1, var2, var3, task_dates) VALUES (%s,%s, %s, %s, %s, %s, %s, %s, %s)", synthetic_tasks
-        )
+        "INSERT INTO Tasks2 (task_id, taskname, estimated_time, total_time, assignee_id, var1, var2, var3, start_date, end_date) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+        synthetic_tasks
+    )
+
         conn.commit()
         print(f" Inserted {len(synthetic_tasks)} synthetic tasks")
 
