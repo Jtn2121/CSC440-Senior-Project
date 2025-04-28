@@ -18,7 +18,7 @@ pysqldf = lambda q: sqldf(q, globals())
 
 db_name = "postgres"
 db_user = "postgres"
-db_password = "password"
+db_password = "Jtn962540"
 db_host = "localhost"
 db_port = "5432"
 
@@ -49,7 +49,7 @@ dataframeTem.columns =["Template_ID","Template_Name"]
 
 #templateChoiceName = str(input("Enter template name:")) # This will be a drop down on the front end
 #assigneeChoiceNum = int(input("Enter assignee Identification")) # Another drop down field of ints
-assigneeChoiceNum = 3 #temporary values that show we can input values and get results
+assigneeChoiceNum = 5 #temporary values that show we can input values and get results
 templateChoiceName = "Reports"
 
 

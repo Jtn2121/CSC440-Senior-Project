@@ -1,219 +1,301 @@
 import React, { useState, useEffect } from 'react';
 
+function getFormattedDate() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+
 export default function TaskForm({ addTask }) {
   const [form, setForm] = useState({
     taskName: '',
-    userId: [],
-    startDate: new Date().toISOString(),
+    userId: '',
+    startDate: getFormattedDate(),
     endDate: '',
     template: '',
     estimatedTime: '',
-    priority: 'Medium',
   });
 
+  const [templates, setTemplates] = useState([]);
+  const [assignees, setAssignees] = useState([]);
   const [adjustedTime, setAdjustedTime] = useState(0);
-  const [riskInfo, setRiskInfo] = useState(null);
-  const [overrunInfo, setOverrunInfo] = useState(null);
-  const [estimatedCompletion, setEstimatedCompletion] = useState(null);
+  const [estimatedCompletion, setEstimatedCompletion] = useState('');
+  const [riskInfo, setRiskInfo] = useState('');
+  const [overrunInfo, setOverrunInfo] = useState('');
 
-  
+  // Fetch templates
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/templates");
+        const data = await res.json();
+        setTemplates(data);
+      } catch (err) {
+        console.error("Failed to fetch templates", err);
+      }
+    };
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+   //  Fetch assignees
+    const fetchAssignees = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/assignees");
+        const data = await res.json();
+        setAssignees(data);
+      } catch (err) {
+        console.error("Failed to fetch assignees", err);
+      }
+    };
+
+    fetchTemplates();
+    fetchAssignees();
+  }, []);
+
+  // Fetch predicted time when template/user changes
+  useEffect(() => {
+    const predict = async () => {
+      if (form.template && form.userId) {
+        try {
+          const res = await fetch("http://localhost:5000/predict-time", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ template: form.template, userId: form.userId })
+          });
+          const data = await res.json();
+          if (data.predictedTime !== undefined) {
+            setAdjustedTime(data.predictedTime);
+          }
+        } catch (err) {
+          console.error("Prediction failed:", err);
+        }
+      }
+    };
+    predict();
+  }, [form.template, form.userId]);
+
+  // Auto-update Start Date every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setForm(prevForm => ({
+        ...prevForm,
+        startDate: getFormattedDate()
+      }));
+    }, 60000); 
+
+    return () => clearInterval(interval); // Cleanup interval when component unmounts
+  }, []);
+
+  useEffect(() => {
+    const fetchRiskAssessment = async () => {
+      if (form.startDate && form.endDate && adjustedTime) {
+        try {
+          const res = await fetch("http://localhost:5000/assess-risk", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              startDate: form.startDate,
+              endDate: form.endDate,
+              taskHours: adjustedTime,
+              calculatedLength: adjustedTime
+            })
+          });
+          const data = await res.json();
+          if (data.estimatedCompletion) {
+            setEstimatedCompletion(data.estimatedCompletion);
+            setRiskInfo(data.risk);
+            setOverrunInfo(data.overrun);
+          }
+        } catch (err) {
+          console.error("Risk assessment failed:", err);
+        }
+      }
+    };
+
+    fetchRiskAssessment();
+  }, [form.endDate, adjustedTime]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const task = {
       ...form,
       adjustedTime,
-      estimatedCompletion: estimatedCompletion?.toISOString(),
-      status: 'todo',
+      estimatedCompletion,
       risk: riskInfo,
       overrun: overrunInfo,
+      status: 'todo',
     };
     addTask(task);
 
     setForm({
       taskName: '',
-      userId: [],
-      startDate: new Date().toISOString(),
+      userId: '',
+      startDate: getFormattedDate(),
       endDate: '',
       template: '',
       estimatedTime: '',
-      priority: 'Medium',
     });
-    setRiskInfo(null);
-    setOverrunInfo(null);
-    setEstimatedCompletion(null);
+    setAdjustedTime(0);
+    setEstimatedCompletion('');
+    setRiskInfo('');
+    setOverrunInfo('');
+  };
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   return (
-    <div className="flex flex-col items-center px-4">
+    <div className = "flex flex-col items-center px-4">
+      <h1 className = "text-2xl font-bold mb-4"> Task Prediction </h1>
 
-      <h1 className="text-2xl font-bold mb-4 text-center w-full max-w-md">Task Prediction</h1>
-
-      <form onSubmit = {handleSubmit} className = "w-full max-w-md bg-white p-4 rounded shadow mb-6">
+      <form onSubmit = {handleSubmit} className="w-full max-w-md bg-white p-4 rounded shadow mb-6">
         <div className = "grid grid-cols-1 gap-4">
 
           {/* Task Name */}
-          <div className="flex flex-col w-full max-w-sm">
-            <label htmlFor = "taskName" className = "text-sm font-semibold mb-1"> Task Name </label>
+          <div className = "flex flex-col">
+            <label htmlFor = "taskName" className="text-sm font-semibold mb-1">Task Name</label>
             <input
               name = "taskName"
               id = "taskName"
               type = "text"
               value = {form.taskName}
               onChange = {handleChange}
-              className = "p-2 border rounded w-full"
+              className = "p-2 border rounded"
               required
             />
           </div>
 
-           {/* User ID */}
-           <div className = "flex flex-col w-full max-w-sm">
-            <label htmlFor = "userId" className = "text-sm font-semibold mb-1"> User ID </label>
+          {/* User ID (Gets based off assignee names in database) */}
+          <div className = "flex flex-col">
+            <label htmlFor = "userId" className="text-sm font-semibold mb-1">Assignee</label>
             <select
               name = "userId"
               id = "userId"
               value = {form.userId}
               onChange = {handleChange}
-              className = "p-2 border rounded w-full"
+              className = "p-2 border rounded"
               required
             >
-              <option value = "">Select User ID</option>
-              <option value = "01">01</option>
-              <option value = "02">02</option>
-              <option value = "03">03</option>
-              <option value = "04">04</option>
-              <option value = "05">05</option>
+              <option value = ""> Select Assignee </option>
+              {assignees.map((assignee) => (
+              <option key = {assignee.id} value={assignee.id}>
+              {assignee.name}
+                </option>
+               ))}
+
             </select>
           </div>
 
-          {/* Template */}
-          <div className = "flex flex-col w-full max-w-sm">
-            <label htmlFor = "template" className="text-sm font-semibold mb-1">Template</label>
+          {/* Template (gets based off template names in database) */}
+          <div className = "flex flex-col">
+            <label htmlFor = "template" className="text-sm font-semibold mb-1"> Template </label>
             <select
               name = "template"
               id = "template"
               value = {form.template}
               onChange = {handleChange}
-              className = "p-2 border rounded w-full"
+              className = "p-2 border rounded"
               required
             >
               <option value = ""> Select Template </option>
-              <option value = "Check Server Logs"> Check Server Logs </option>
-              <option value = "System Update"> System Update </option>
-              <option value = "Code Review"> Code Review </option>
-              <option value = "User Testing"> User Testing</option>
-              <option value = "Debugging"> Debugging </option>
-              <option value = "Coding"> Coding </option>
-              <option value = "Software maintenance"> Software maintenance </option>
-              <option value = "Data Scrubbing"> Data Scrubbing </option>
-              <option value = "Analytics Monitoring"> Analytics Monitoring </option>
-              <option value = "Meeting Planning"> Meeting Planning </option>
-              <option value = "Documentation"> Documentation </option>
-              <option value = "Database Management"> Database Management </option>
-              <option value = "Database Auditing"> Database Auditing </option>
-              <option value = "Aircraft Induction"> Aircraft Induction </option>
-              <option value = "Deployment"> Deployment </option>
+              {templates.map((tpl) => (
+                <option key = {tpl} value={tpl}>{tpl}</option>
+              ))}
             </select>
           </div>
 
-         {/*
-          // Start Date (autopopulated when task is created)
-          <div className = "flex flex-col w-full max-w-sm">
-            <label htmlFor = "startDate" className="text-sm font-semibold mb-1">Start Date</label>
+          {/* Start Date (read-only) */}
+          <div className = "flex flex-col">
+           <label htmlFor = "startDate" className="text-sm font-semibold mb-1"> Start Date </label>
             <input
               name = "startDate"
               id = "startDate"
-              type="datetime-local"
+              type = "datetime-local"
               value = {form.startDate}
-              onChange = {handleChange}
-              className = "p-2 border rounded w-full"
-              required
+              disabled
+              className = "p-2 border rounded bg-gray-100 text-gray-600"
             />
           </div>
-          */}
 
-          {/* End Date (includes time)*/}
-          <div className = "flex flex-col w-full max-w-sm">
+
+          {/* End Date */}
+          <div className = "flex flex-col">
             <label htmlFor = "endDate" className="text-sm font-semibold mb-1">End Date</label>
             <input
               name = "endDate"
               id = "endDate"
-              type="datetime-local"
+              type = "datetime-local"
               value = {form.endDate}
               onChange = {handleChange}
               className = "p-2 border rounded w-full"
             />
           </div>
 
-          {/* Estimated Time */}
-          <div className = "flex flex-col w-full max-w-sm">
-            <label htmlFor = "estimatedTime" className="text-sm font-semibold mb-1"> Estimated Time (hrs) </label>
+          {/* Predicted Time */}
+          <div className="flex flex-col">
+            <label htmlFor="adjustedTime" className="text-sm font-semibold mb-1"> Predicted Estimated Time (hrs) </label>
             <input
-              name = "estimatedTime"
-              id = "estimatedTime"
-              type = "number"
-              step = "0.1"
-              value = {form.estimatedTime}
+              id="adjustedTime"
+              type="number"
+              step="0.1"
+              value={adjustedTime ? adjustedTime.toFixed(2) : ''}
               onChange = {handleChange}
-              className = "p-2 border rounded w-full"
-              required
+              className="p-2 border rounded bg-gray-100 text-gray-600"
             />
           </div>
 
-          {/* Priority */}
-          <div className = "flex flex-col w-full max-w-sm">
-            <label htmlFor = "priority" className="text-sm font-semibold mb-1"> Priority </label>
-            <select
-              name = "priority"
-              id = "priority"
-              value = {form.priority}
-              onChange = {handleChange}
-              className = "p-2 border rounded w-full"
-            >
-              <option> High </option>
-              <option> Medium </option>
-              <option> Low </option>
-            </select>
-          </div>
-
-          {/* Adjusted Time */}
-          <div className = "flex flex-col w-full max-w-sm">
-            <label htmlFor = "adjustedTime" className="text-sm font-semibold mb-1"> Generated Estimated Time (hrs) </label>
+          
+          {/* Estimated Completion */}
+          <div className = "flex flex-col">
+            <label className = "text-sm font-semibold mb-1"> Estimated Completion </label>
             <input
-              id = "adjustedTime"
+              type = "datetime-local"
+              value = {estimatedCompletion}
+              readOnly
+              onChange = {() => {}}
               disabled
-              value = {adjustedTime.toFixed(1)}
-              className = "p-2 border rounded bg-gray-100 text-gray-600 w-full"
+              className = "p-2 border rounded bg-gray-100 text-gray-600"
             />
           </div>
-        </div>
 
-        {/* Risk/Overrun Output */}
-        <div className = "mt-4 space-y-2">
-          {estimatedCompletion && (
-            <div className = "text-sm text-gray-700">
-              Estimated Completion: <strong>{new Date(estimatedCompletion).toLocaleString()}</strong>
-            </div>
-          )}
-          {riskInfo && (
-            <div className = "text-sm font-bold text-white p-2 rounded" style = {{ backgroundColor: riskInfo.color }}>
-              Risk: {riskInfo.text}
-            </div>
-          )}
-          {overrunInfo && (
-            <div className = "text-sm font-bold text-white p-2 rounded" style = {{ backgroundColor: overrunInfo.color }}>
-              Overrun: {overrunInfo.text}
-            </div>
-          )}
-        </div>
+          {/* Risk Info */}
+          <div className = "flex flex-col">
+            <label className = "text-sm font-semibold mb-1"> Risk </label>
+            <input
+              value = {riskInfo}
+              readOnly
+              onChange = {() => {}}
+              disabled
+              className = {`p-2 border rounded ${
+                riskInfo.includes('Low') ? 'bg-green-100 text-green-700' :
+                riskInfo.includes('Medium') ? 'bg-yellow-100 text-yellow-700' :
+                riskInfo.includes('High') ? 'bg-red-100 text-red-700' :
+                'bg-gray-100 text-gray-600'
+              }`}
+            />
+          </div>
 
-        <button type = "submit" className = "mt-4 bg-blue-600 text-white px-4 py-2 rounded">
-          Create Task
-        </button>
+          {/* Overrun Info */}
+          <div className = "flex flex-col">
+            <label className = "text-sm font-semibold mb-1"> Overrun </label>
+            <input
+              value={overrunInfo}
+              readOnly
+              onChange = {() => {}}
+              disabled
+              className = "p-2 border rounded bg-gray-100 text-gray-600"
+            />
+          </div>
+
+          <button type = "submit" className = "mt-4 bg-blue-600 text-white px-4 py-2 rounded">
+            Create Task
+          </button>
+
+        </div>
       </form>
     </div>
   );

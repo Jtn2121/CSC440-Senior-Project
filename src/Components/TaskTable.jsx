@@ -1,65 +1,66 @@
 import React from "react";
-import { Link } from "react-router-dom";
 
-export default function TaskTable({ tasks, deleteTask }) {
+export default function TaskTable({ tasks, deleteTask, assignees }) {
   return (
     <div className = "mt-6">
-      <h2 className = "text-xl font-bold mb-2"> Tasks </h2>
+      <h2 className = "text-xl font-bold mb-2">Tasks</h2>
       <ul className = "space-y-4">
         {tasks.map((task) => (
           <li key = {task.id} className = "bg-white p-4 rounded shadow space-y-1">
+            
+            {/* Task Name */}
             <p className = "font-semibold text-blue-600 text-lg">
               {task.taskName}
             </p>
 
+            {/* Template and Estimated Time */}
             <p className = "text-sm text-gray-600">
-              {task.template} • Estimated Time <strong>{task.adjustedTime?.toFixed(1)} hrs</strong>
+              {task.template} • Estimated Time: <strong>{task.adjustedTime?.toFixed(1)} hrs</strong>
             </p>
 
+            {/* Assigned To (Show Employee Name, not UUID) */}
             <p className="text-sm text-gray-500">
-              Assigned to: {Array.isArray(task.userId) ? task.userId.join(", ") : task.userId}
+              Assigned to: {assignees.find(a => a.id === task.userId)?.name || task.userId}
             </p>
 
+            {/* Start Date */}
             <p className="text-sm text-gray-500">
-            Start Date: {new Date(task.startDate).toLocaleString()}
+              Start Date: {task.startDate ? new Date(task.startDate).toLocaleString() : "N/A"}
             </p>
 
-            <p className = "text-sm text-gray-800">
-              Due by: {new Date(task.endDate).toLocaleString()}
+            {/* Due Date (End Date) */}
+            <p className="text-sm text-gray-500">
+              Due by: {task.endDate ? new Date(task.endDate).toLocaleString() : "N/A"}
             </p>
-       
-          <button 
-            onClick = {() => deleteTask(task.id)}
-            className = "text-sm text-red-500 hover: underline"> Delete 
-          </button>
 
+            {/* Estimated Completion */}
+            <p className="text-sm text-gray-500">
+              Estimated Completion: {task.estimatedCompletion ? new Date(task.estimatedCompletion).toLocaleString() : "N/A"}
+            </p>
 
-            <div className = "flex gap-2 mt-1 items-center">
-              <span
-                className = {`text-xs font-semibold px-2 py-1 rounded-full ${
-                  task.priority === 'High'
-                    ? 'bg-red-200 text-red-800'
-                    : task.priority === 'Medium'
-                    ? 'bg-yellow-200 text-yellow-800'
-                    : 'bg-green-200 text-green-800'
-                }`}
-              >
-                {task.priority}
-              </span>
-              <span className = "text-xs uppercase bg-gray-100 text-gray-600 px-2 py-1 rounded">
-                {task.status}
-              </span>
-            </div>
-            {task.risk?.text && (
-              <p className = "text-xs mt-1 text-white px-2 py-1 rounded" style = {{ backgroundColor: task.risk.color }}>
-                Risk: {task.risk.text}
-              </p>
-            )}
-            {task.overrun?.text && (
-              <p className = "text-xs mt-1 text-white px-2 py-1 rounded" style = {{ backgroundColor: task.overrun.color }}>
-                Overrun: {task.overrun.text}
-              </p>
-            )}
+            {/* Risk */}
+            <p className = {`text-sm font-semibold ${
+              task.risk?.includes("Low") ? "text-green-600" :
+              task.risk?.includes("Medium") ? "text-yellow-600" :
+              task.risk?.includes("High") ? "text-red-600" :
+              "text-gray-600"
+            }`}>
+              Risk: {task.risk || "N/A"}
+            </p>
+
+            {/* Overrun */}
+            <p className = "text-sm text-gray-600">
+              Overrun: {task.overrun || "N/A"}
+            </p>
+
+            {/* Delete Button */}
+            <button
+              onClick={() => deleteTask(task.id)}
+              className = "text-sm text-red-500 hover:underline mt-2"
+            >
+              Delete
+            </button>
+
           </li>
         ))}
       </ul>
