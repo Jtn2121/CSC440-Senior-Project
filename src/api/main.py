@@ -67,12 +67,29 @@ def calculate_available_hours(start_dt, end_dt):
 
     while current_day <= end_day:
         if not is_weekend(current_day):
-            if current_day == start_dt.date():
-                start_time = max(start_dt, start_dt.replace(hour=WORK_START_HOUR, minute=0, second=0))
-                end_time = start_dt.replace(hour=WORK_END_HOUR, minute=0, second=0)
+            if current_day == start_dt.date() and current_day == end_dt.date():
+                # SAME DAY start and end
+                start_time = max(start_dt, datetime.combine(current_day, datetime.min.time()).replace(hour=WORK_START_HOUR))
+                end_time = min(end_dt, datetime.combine(current_day, datetime.min.time()).replace(hour=WORK_END_HOUR))
                 if start_time < end_time:
                     total_hours += (end_time - start_time).total_seconds() / 3600
+
+            elif current_day == start_dt.date():
+                # First day (not same day)
+                start_time = max(start_dt, datetime.combine(current_day, datetime.min.time()).replace(hour=WORK_START_HOUR))
+                end_time = datetime.combine(current_day, datetime.min.time()).replace(hour=WORK_END_HOUR)
+                if start_time < end_time:
+                    total_hours += (end_time - start_time).total_seconds() / 3600
+
+            elif current_day == end_dt.date():
+                # Last day
+                start_time = datetime.combine(current_day, datetime.min.time()).replace(hour=WORK_START_HOUR)
+                end_time = min(end_dt, datetime.combine(current_day, datetime.min.time()).replace(hour=WORK_END_HOUR))
+                if start_time < end_time:
+                    total_hours += (end_time - start_time).total_seconds() / 3600
+
             else:
+                # Full workday between start and end
                 total_hours += WORK_HOURS_PER_DAY
         current_day += timedelta(days=1)
 
