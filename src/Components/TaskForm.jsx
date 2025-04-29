@@ -236,15 +236,15 @@ export default function TaskForm({ addTask }) {
           </div>
 
           {/* Predicted Time */}
-          <div className="flex flex-col">
-            <label htmlFor="adjustedTime" className="text-sm font-semibold mb-1"> Predicted Estimated Time (hrs) </label>
+          <div className = "flex flex-col">
+            <label htmlFor = "adjustedTime" className="text-sm font-semibold mb-1"> Predicted Estimated Time (hrs) </label>
             <input
-              id="adjustedTime"
-              type="number"
-              step="0.1"
-              value={adjustedTime ? adjustedTime.toFixed(2) : ''}
-              onChange = {handleChange}
-              className="p-2 border rounded bg-gray-100 text-gray-600"
+              id = "adjustedTime"
+              type = "number"
+              step = "0.1"
+              value = {adjustedTime ? adjustedTime.toFixed(2) : ''}
+              onChange={(e) => setAdjustedTime(parseFloat(e.target.value) || 0)}
+              className = "p-2 border rounded bg-gray-100 text-gray-600"
             />
           </div>
 
