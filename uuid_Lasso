@@ -1,3 +1,7 @@
+# NOTE: NEED TO RUN uuidSynthetic FILE FIRST TO CREATE AND POPULATE TABLES
+
+
+
 
 import random as rd
 import pandas as pd
@@ -18,7 +22,7 @@ pysqldf = lambda q: sqldf(q, globals())
 
 db_name = "postgres"
 db_user = "postgres"
-db_password = "Jtn962540"
+db_password = "password" # this should be changed to your password here
 db_host = "localhost"
 db_port = "5432"
 
@@ -39,20 +43,25 @@ tempSize = templateRavel.size
 
 templateRows = []
 
-for x in range(tempSize):
+for x in range(tempSize): # sets up initial dataframe for template options
     id = str(templateCol[x,0])
     name = templateCol[x,1]
     templateRows.append([id, name])
 
-dataframeTem = pd.DataFrame(templateRows)
+dataframeTem = pd.DataFrame(templateRows) # Creation of dataframe that stores template id and template name - this is generalized to intake whatever is produced in the synthetic data
 dataframeTem.columns =["Template_ID","Template_Name"]
 
-#templateChoiceName = str(input("Enter template name:")) # This will be a drop down on the front end
-#assigneeChoiceNum = int(input("Enter assignee Identification")) # Another drop down field of ints
-assigneeChoiceNum = 5 #temporary values that show we can input values and get results
-templateChoiceName = "Reports"
+####################################### INPUTS BEGINNING ############################################
+
+#templateChoiceName = str(input("Enter template name: (Marketing, Reports, Orders, Sprints) ")) # This will be a drop down on the front end ### This allows for manual template input by name (Reports, a
+#assigneeChoiceNum = int(input("Enter assignee Identification: (1-13) ")) # Another drop down field of ints
+assigneeChoiceNum = 5  #hard coded values that show we can input values and get results
+templateChoiceName = "Reports" #hard coded template choice name
+
+#################################### INPUTS END #####################################################
 
 
+###################################### SUBSET PULL FILTERED BY TEMPLATE ############################
 tIDdf = pysqldf("SELECT template_id FROM dataframeTem WHERE Template_Name = '{}'".format(templateChoiceName))
 print(tIDdf)
 template_id = tIDdf.at[0,'Template_ID']
@@ -82,7 +91,7 @@ with psycopg2.connect(
                            """)
             AssigneeArr = np.array(cursor.fetchall())
 
-
+####################################### ASSIGNEE LABEL ENCODER (SEE DOCUMENTATION) ##############################
 assigneeSize = AssigneeArr.size
 AssigneeArr = AssigneeArr.ravel()
 rows = []
@@ -105,7 +114,7 @@ encoder = LabelEncoder()
 assigneeEncoded = encoder.fit_transform(assigneeStuff)
 PartialDataset['Assignee_encoded'] = assigneeEncoded
 
-print(PartialDataset)
+#print(PartialDataset) # can be used to see the subset used
 
 ######################## Actionable Data Extracted #########################
 
@@ -130,7 +139,7 @@ diffLasso.fit(X_train, y_train)
 X_Input = np.array([[assigneeChoiceNum]])
 y_pred = diffLasso.predict(X_Input)
 
-print("The prediction for this template with the given assignee value is: ", y_pred)
+print("The prediction for this template with the given assignee value is: ", y_pred) #Final prediction output 
 
 
 
